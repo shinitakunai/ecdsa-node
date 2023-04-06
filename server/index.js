@@ -1,3 +1,10 @@
+const secp = require("ethereum-cryptography/secp256k1");
+const { keccak256 } = require("ethereum-cryptography/keccak");
+const {
+  utf8ToBytes,
+  toHex,
+  hexToBytes,
+} = require("ethereum-cryptography/utils");
 const express = require("express");
 const app = express();
 const cors = require("cors");
@@ -7,10 +14,15 @@ app.use(cors());
 app.use(express.json());
 
 const balances = {
-  "0x1": 100,
-  "0x2": 50,
-  "0x3": 75,
+  "554d9a239c2c14ae6a77c9de35f2f61c56e1e4ea": 100,
+  "52c0072010ea5b9e258883f6c6464e84812ef44d": 50,
+  b22b628a9d7718f7f3936270abe038f654a2b60b: 75,
 };
+
+function hashMessage(message) {
+  const bytes = utf8ToBytes(message);
+  return keccak256(bytes);
+}
 
 app.get("/balance/:address", (req, res) => {
   const { address } = req.params;
@@ -19,7 +31,21 @@ app.get("/balance/:address", (req, res) => {
 });
 
 app.post("/send", (req, res) => {
-  const { sender, recipient, amount } = req.body;
+  const { signature, recoverBit, recipient, amount } = req.body;
+
+  const sender = toHex(
+    keccak256(
+      secp
+        .recoverPublicKey(
+          hashMessage("test"),
+          hexToBytes(signature),
+          recoverBit
+        )
+        .slice(1)
+    ).slice(-20)
+  );
+
+  console.log(sender, "sender");
 
   setInitialBalance(sender);
   setInitialBalance(recipient);
